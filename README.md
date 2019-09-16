@@ -60,7 +60,7 @@ func main() {
 
 }
 
-func handlePacket(data []byte, shortHeaderConnIDLen int, sentBy protocol.Perspective, version protocol.VersionNumber) (*protocol.Header, error) {
+func handlePacket(data []byte, shortHeaderConnIDLen int, sentBy protocol.Perspective, version protocol.VersionNumber) (*wire.Header, error) {
 	r := bytes.NewReader(data)
 	iHdr, err := wire.ParseInvariantHeader(r, shortHeaderConnIDLen)
 	// drop the packet if we can't parse the header

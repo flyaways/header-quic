@@ -42,7 +42,10 @@ type Header struct {
 	Token        []byte
 }
 
-var errInvalidPacketNumberLen = errors.New("invalid packet number length")
+var (
+	errInvalidPacketNumberLen = errors.New("invalid packet number length")
+	errPacketNumberLenNotSet  = errors.New("StopWaitingFrame: PacketNumberLen not set")
+)
 
 // Write writes the Header.
 func (h *Header) Write(b *bytes.Buffer, pers protocol.Perspective, ver protocol.VersionNumber) error {
