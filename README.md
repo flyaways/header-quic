@@ -12,10 +12,17 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 
 	"github.com/flyaways/header-quic/protocol"
 	"github.com/flyaways/header-quic/wire"
 )
+
+func getRandomData(l int) []byte {
+	b := make([]byte, l)
+	rand.Read(b)
+	return b
+}
 
 func main() {
 	//func handlePacket(data []byte, shortHeaderConnIDLen int, sentBy protocol.Perspective, version protocol.VersionNumber) (*protocol.Header, error) {
@@ -50,14 +57,66 @@ func main() {
 	// 	PayloadLen   protocol.ByteCount
 	// 	Token        []byte
 	// }
-	header, err := handlePacket([]byte(""), 4, protocol.PerspectiveClient, protocol.Version39)
-	if err != nil {
-		fmt.Println(err)
-		return
+	const version = protocol.Version39
+
+	headers := []wire.Header{
+		wire.Header{ // Initial without token
+			IsLongHeader:     true,
+			DestConnectionID: protocol.ConnectionID(getRandomData(8)),
+			Type:             protocol.PacketTypeInitial,
+			Version:          version,
+			PacketNumberLen:  protocol.PacketNumberLen4,
+			PacketNumber:     protocol.PacketNumber(rand.Uint32()),
+		},
+		wire.Header{ // Handshake packet
+			IsLongHeader:     true,
+			DestConnectionID: protocol.ConnectionID(getRandomData(8)),
+			Type:             protocol.PacketTypeHandshake,
+			Version:          version,
+			PacketNumberLen:  protocol.PacketNumberLen4,
+			PacketNumber:     protocol.PacketNumber(rand.Uint32()),
+		},
+		wire.Header{ // 0-RTT packet
+			IsLongHeader:     true,
+			DestConnectionID: protocol.ConnectionID(getRandomData(8)),
+			Type:             protocol.PacketType0RTT,
+			Version:          version,
+			PacketNumberLen:  protocol.PacketNumberLen4,
+			PacketNumber:     protocol.PacketNumber(rand.Uint32()),
+		},
+		wire.Header{ // Retry Packet
+			IsLongHeader:         true,
+			DestConnectionID:     protocol.ConnectionID(getRandomData(8)),
+			OrigDestConnectionID: protocol.ConnectionID(getRandomData(8)),
+			Type:                 protocol.PacketTypeRetry,
+			Token:                getRandomData(10),
+			Version:              version,
+			PacketNumberLen:      protocol.PacketNumberLen4,
+			PacketNumber:         protocol.PacketNumber(rand.Uint32()),
+		},
+		wire.Header{ // Short-Header
+			DestConnectionID: protocol.ConnectionID(getRandomData(8)),
+			PacketNumberLen:  protocol.PacketNumberLen4,
+			PacketNumber:     protocol.PacketNumber(rand.Uint32()),
+		},
 	}
 
-	fmt.Println(header)
+	b := &bytes.Buffer{}
+	for _, h := range headers {
+		b.Reset()
+		if err := h.Write(b, protocol.PerspectiveClient, version); err != nil {
+			panic(err)
+		}
 
+		header, err := handlePacket(b.Bytes(), 4, protocol.PerspectiveClient, protocol.Version39)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Printf("%+v\n", *header)
+
+	}
 }
 
 func handlePacket(data []byte, shortHeaderConnIDLen int, sentBy protocol.Perspective, version protocol.VersionNumber) (*wire.Header, error) {
@@ -83,5 +142,6 @@ func handlePacket(data []byte, shortHeaderConnIDLen int, sentBy protocol.Perspec
 
 	return hdr, nil
 }
+
 
 ```
